@@ -56,6 +56,7 @@ public class TestGeoNamesLuceneIndexer extends TestBase {
             .longitude(56.78)
             .featureCode("PPL")
             .population(1000000)
+            .searchableContent("")
             .build();
 
     private static final GeoEntry GEO_ENTRY_2 = new GeoEntry.Builder()
@@ -64,6 +65,7 @@ public class TestGeoNamesLuceneIndexer extends TestBase {
             .longitude(5.678)
             .featureCode("PPL")
             .population(10000000)
+            .searchableContent("")
             .build();
 
     private static final GeoEntry GEO_ENTRY_3 = new GeoEntry.Builder()
@@ -72,6 +74,7 @@ public class TestGeoNamesLuceneIndexer extends TestBase {
             .longitude(-5.678)
             .featureCode("PPL")
             .population(100000000)
+            .searchableContent("")
             .build();
 
     private static final List<GeoEntry> GEO_ENTRY_LIST =
