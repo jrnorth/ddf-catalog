@@ -14,45 +14,36 @@
 
 package org.codice.ddf.spatial.geocoding.query;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queries.CustomScoreQuery;
 import org.apache.lucene.queries.function.FunctionQuery;
 import org.apache.lucene.queries.function.valuesource.FloatFieldSource;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.DisjunctionMaxQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
 import org.codice.ddf.spatial.geocoding.GeoEntry;
 import org.codice.ddf.spatial.geocoding.GeoEntryQueryException;
 import org.codice.ddf.spatial.geocoding.GeoEntryQueryable;
-import org.codice.ddf.spatial.geocoding.index.GeoNamesLuceneIndexer;
 
-public class GeoNamesLuceneIndex implements GeoEntryQueryable {
-    private String indexLocation;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
-    public void setIndexLocation(final String indexLocation) {
-        this.indexLocation = indexLocation;
-    }
+public abstract class GeoNamesQueryLuceneIndex implements GeoEntryQueryable {
+    protected abstract Directory createDirectory() throws IOException;
 
-    @Override
-    public List<GeoEntry> query(final String queryString, final int maxResults) {
+    protected abstract IndexReader createIndexReader(Directory directory) throws IOException;
+
+    protected abstract IndexSearcher createIndexSearcher(IndexReader indexReader);
+
+    protected List<GeoEntry> doQuery(final String queryString, final int maxResults,
+            final Directory directory) {
         if (StringUtils.isBlank(queryString)) {
             throw new IllegalArgumentException("The query string cannot be null or empty.");
         }
@@ -61,39 +52,10 @@ public class GeoNamesLuceneIndex implements GeoEntryQueryable {
             throw new IllegalArgumentException("maxResults must be positive.");
         }
 
-        if (!(new File(indexLocation).exists())) {
-            throw new GeoEntryQueryException("There is no index at that location.");
-        }
+        try (final IndexReader indexReader = createIndexReader(directory)) {
+            final IndexSearcher indexSearcher = createIndexSearcher(indexReader);
 
-        Directory directory;
-
-        try {
-            directory = FSDirectory.open(Paths.get(indexLocation));
-        } catch (IOException e) {
-            throw new GeoEntryQueryException("Error opening the index directory", e);
-        }
-
-        try (final IndexReader indexReader = DirectoryReader.open(directory)) {
-            final IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-            indexSearcher.setSimilarity(GeoNamesLuceneIndexer.SIMILARITY);
-
-            final QueryParser nameQueryParser = new QueryParser("name", new StandardAnalyzer());
-            nameQueryParser.setEnablePositionIncrements(false);
-
-            // Surround with quotes so Lucene looks for the words in the query as a phrase.
-            final Query nameQuery = nameQueryParser.parse("\"" + queryString + "\"");
-            nameQuery.setBoost(3.2f);
-
-            final QueryParser alternateNamesQueryParser = new QueryParser("alternate_names",
-                    new StandardAnalyzer());
-            final Query alternateNamesQuery = alternateNamesQueryParser.parse(queryString);
-
-            final List<Query> queryList = Arrays.asList(nameQuery, alternateNamesQuery);
-
-            final DisjunctionMaxQuery disjunctionMaxQuery =
-                    new DisjunctionMaxQuery(queryList, 1.0f);
-            final FunctionQuery boostQuery = new FunctionQuery(new FloatFieldSource("boost"));
-            final Query query = new CustomScoreQuery(disjunctionMaxQuery, boostQuery);
+            final Query query = createQuery(queryString);
 
             final TopDocs topDocs = indexSearcher.search(query, maxResults);
             if (topDocs.totalHits > 0) {
@@ -109,7 +71,7 @@ public class GeoNamesLuceneIndex implements GeoEntryQueryable {
                             .build());
                 }
                 return results;
-            } else {
+            } else { // Perhaps try a fallback query here? A less-restrictive one?
                 return Collections.emptyList();
             }
         } catch (IOException e) {
@@ -117,5 +79,25 @@ public class GeoNamesLuceneIndex implements GeoEntryQueryable {
         } catch (ParseException e) {
             throw new GeoEntryQueryException("Error parsing query", e);
         }
+    }
+
+    protected Query createQuery(final String queryString) throws ParseException {
+        final QueryParser nameQueryParser = new QueryParser("name", new StandardAnalyzer());
+        nameQueryParser.setEnablePositionIncrements(false);
+
+        // Surround with quotes so Lucene looks for the words in the query as a phrase.
+        final Query nameQuery = nameQueryParser.parse("\"" + queryString + "\""); // Perhaps experiment with "and"?
+        nameQuery.setBoost(3.2f);
+
+        final QueryParser alternateNamesQueryParser = new QueryParser("alternate_names",
+                new StandardAnalyzer());
+        final Query alternateNamesQuery = alternateNamesQueryParser.parse(queryString);
+
+        final List<Query> queryList = Arrays.asList(nameQuery, alternateNamesQuery);
+
+        final DisjunctionMaxQuery disjunctionMaxQuery =
+                new DisjunctionMaxQuery(queryList, 1.0f);
+        final FunctionQuery boostQuery = new FunctionQuery(new FloatFieldSource("boost"));
+        return new CustomScoreQuery(disjunctionMaxQuery, boostQuery);
     }
 }

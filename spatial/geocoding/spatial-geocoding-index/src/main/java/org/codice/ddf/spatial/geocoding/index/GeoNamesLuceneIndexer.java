@@ -54,7 +54,7 @@ public class GeoNamesLuceneIndexer implements GeoEntryIndexer {
     public static final DefaultSimilarity SIMILARITY = new DefaultSimilarity() {
         @Override
         public float lengthNorm(final FieldInvertState fieldInvertState) {
-            if (fieldInvertState.getName().equals("searchable_content")) {
+            if (fieldInvertState.getName().equals("alternate_names")) {
                 return 1.0f;
             } else {
                 return super.lengthNorm(fieldInvertState) / (float) Math.sqrt(fieldInvertState.getLength());
@@ -228,7 +228,6 @@ public class GeoNamesLuceneIndexer implements GeoEntryIndexer {
         boost += population > 0 ? 0.1f : 0;
         // A population of 25000000 or more will give the max population boost.
         boost += Math.min(population / 25000000.0f, 1.0f) * 5.0f;
-
         return boost;
     }
 }

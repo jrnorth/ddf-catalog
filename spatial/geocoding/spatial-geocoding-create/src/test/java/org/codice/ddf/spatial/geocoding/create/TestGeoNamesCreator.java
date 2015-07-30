@@ -26,7 +26,8 @@ public class TestGeoNamesCreator extends TestBase {
                 "013\t012\t011\t236123\t370\t368\tAmerica/Phoenix\t2011-05-14";
         final GeoNamesCreator geoNamesCreator = new GeoNamesCreator();
         final GeoEntry geoEntry = geoNamesCreator.createGeoEntry(geoNamesEntryStr);
-        verifyGeoEntry(geoEntry, "Chandler", 33.30616, -111.84125, "PPL", 236123);
+        verifyGeoEntry(geoEntry, "Chandler", 33.30616, -111.84125, "PPL", 236123, "Candler," +
+                "Candleris,Chandler,Chandlur");
     }
 
     @Test
@@ -36,6 +37,6 @@ public class TestGeoNamesCreator extends TestBase {
                 "2011-05-14";
         final GeoNamesCreator geoNamesCreator = new GeoNamesCreator();
         final GeoEntry geoEntry = geoNamesCreator.createGeoEntry(geoNamesEntryStr);
-        verifyGeoEntry(geoEntry, "Cave Creek", 33.83333, -111.95083, "PPL", 5015);
+        verifyGeoEntry(geoEntry, "Cave Creek", 33.83333, -111.95083, "PPL", 5015, "");
     }
 }
