@@ -28,7 +28,7 @@ import org.codice.ddf.spatial.geocoding.GeoEntryQueryException;
 import org.codice.ddf.spatial.geocoding.GeoEntryQueryable;
 import org.codice.ddf.spatial.geocoding.index.GeoNamesLuceneIndexer;
 
-public class GeoNamesQueryLuceneDirectoryIndex extends GeoNamesQueryLuceneIndex implements GeoEntryQueryable {
+public class GeoNamesQueryLuceneDirectoryIndex extends GeoNamesQueryLuceneIndex {
     private String indexLocation;
 
     public void setIndexLocation(final String indexLocation) {
