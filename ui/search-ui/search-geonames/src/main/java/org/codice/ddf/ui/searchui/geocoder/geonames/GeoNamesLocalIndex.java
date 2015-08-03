@@ -35,25 +35,22 @@ public class GeoNamesLocalIndex implements GeoCoder {
 
     @Override
     public GeoResult getLocation(final String location) {
-        List<GeoEntry> topResults;
-        GeoEntry topResult = null;
-
         try {
-            topResults = geoEntryQueryable.query(location, 1);
-            topResult = topResults.get(0);
+            List<GeoEntry> topResults = geoEntryQueryable.query(location, 1);
+
+            if (topResults.size() > 0) {
+                final GeoEntry topResult = topResults.get(0);
+                final String name = topResult.getName();
+                final double latitude = topResult.getLatitude();
+                final double longitude = topResult.getLongitude();
+                final String featureCode = topResult.getFeatureCode();
+                final long population = topResult.getPopulation();
+
+                return GeoResultCreator
+                        .createGeoResult(name, latitude, longitude, featureCode, population);
+            }
         } catch (GeoEntryQueryException e) {
             LOGGER.error("Error querying the local GeoNames index", e);
-        }
-
-        if (topResult != null) {
-            final String name = topResult.getName();
-            final double latitude = topResult.getLatitude();
-            final double longitude = topResult.getLongitude();
-            final String featureCode = topResult.getFeatureCode();
-            final long population = topResult.getPopulation();
-
-            return GeoResultCreator
-                    .createGeoResult(name, latitude, longitude, featureCode, population);
         }
 
         return null;
