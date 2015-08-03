@@ -50,11 +50,12 @@ import org.codice.ddf.spatial.geocoding.TestBase;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(DirectoryReader.class)
+@PrepareForTest({DirectoryReader.class, IndexReader.class})
 public class TestGeoNamesQueryLuceneIndex extends TestBase {
     private Directory directory;
     private IndexReader indexReader;
@@ -114,15 +115,16 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
             .build();
 
     @Before
-    public void setup() throws IOException {
+    public void setUp() throws IOException {
         directory = mock(Directory.class);
-        indexReader = mock(IndexReader.class);
+        // IndexReader's document() method is final, and we need to mock it.
+        indexReader = PowerMockito.mock(IndexReader.class);
         indexSearcher = mock(IndexSearcher.class);
         topDocs = mock(TopDocs.class);
         directoryIndex = spy(new GeoNamesQueryLuceneDirectoryIndex());
 
         doReturn(directory).when(directoryIndex).createDirectory();
-        doReturn(indexReader).when(directoryIndex).createIndexReader(any(Directory.class));
+        doReturn(indexReader).when(directoryIndex).createIndexReader(directory);
         doReturn(indexSearcher).when(directoryIndex).createIndexSearcher(indexReader);
 
         mockStatic(DirectoryReader.class);
@@ -143,7 +145,7 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
         return document;
     }
 
-    private void setUpTopDocs(final TopDocs topDocs, final int numResults) {
+    private void setUpTopDocs(final int numResults) {
         topDocs.totalHits = numResults;
         topDocs.scoreDocs = new ScoreDoc[numResults];
 
@@ -157,7 +159,7 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
     public void testQueryWithExactlyMaxResults() throws IOException {
         final int requestedMaxResults = 2;
 
-        setUpTopDocs(topDocs, requestedMaxResults);
+        setUpTopDocs(requestedMaxResults);
 
         doReturn(topDocs).when(indexSearcher).search(any(Query.class), eq(requestedMaxResults));
 
@@ -168,10 +170,12 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
         assertThat(results.size(), is(requestedMaxResults));
 
         final GeoEntry firstResult = results.get(0);
-        verifyGeoEntry(firstResult, NAME_1, LAT_1, LON_1, FEATURE_CODE_1, POP_1, ALT_NAMES_1);
+        // We don't store the alternate names, so we don't get them back with the query results.
+        verifyGeoEntry(firstResult, NAME_1, LAT_1, LON_1, FEATURE_CODE_1, POP_1, null);
 
         final GeoEntry secondResult = results.get(1);
-        verifyGeoEntry(secondResult, NAME_2, LAT_2, LON_2, FEATURE_CODE_2, POP_2, ALT_NAMES_2);
+        // We don't store the alternate names, so we don't get them back with the query results.
+        verifyGeoEntry(secondResult, NAME_2, LAT_2, LON_2, FEATURE_CODE_2, POP_2, null);
     }
 
     @Test
@@ -179,7 +183,7 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
         final int requestedMaxResults = 2;
         final int actualResults = 1;
 
-        setUpTopDocs(topDocs, actualResults);
+        setUpTopDocs(actualResults);
 
         doReturn(topDocs).when(indexSearcher).search(any(Query.class), eq(requestedMaxResults));
 
@@ -189,7 +193,8 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
         assertThat(results.size(), is(actualResults));
 
         final GeoEntry firstResult = results.get(0);
-        verifyGeoEntry(firstResult, NAME_3, LAT_3, LON_3, FEATURE_CODE_3, POP_3, ALT_NAMES_3);
+        // We don't store the alternate names, so we don't get them back with the query results.
+        verifyGeoEntry(firstResult, NAME_3, LAT_3, LON_3, FEATURE_CODE_3, POP_3, null);
     }
 
     @Test
@@ -237,8 +242,8 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
 
         try {
             directoryIndex.query("phoenix", 1);
-            fail("Should have thrown a GeoEntryQueryException because an IOException was thrown when creating the " +
-                    "directory.");
+            fail("Should have thrown a GeoEntryQueryException because an IOException was thrown " +
+                    " when creating the directory.");
         } catch (GeoEntryQueryException e) {
             assertThat("The GeoEntryQueryException was not caused by an IOException.",
                     e.getCause(), instanceOf(IOException.class));
@@ -251,8 +256,8 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
 
         try {
             directoryIndex.query("phoenix", 1);
-            fail("Should have thrown a GeoEntryQueryException because an IOException was thrown when creating the " +
-                    "IndexReader.");
+            fail("Should have thrown a GeoEntryQueryException because an IOException was thrown " +
+                    "when creating the IndexReader.");
         } catch (GeoEntryQueryException e) {
             assertThat("The GeoEntryQueryException was not caused by an IOException.",
                     e.getCause(), instanceOf(IOException.class));
@@ -265,8 +270,8 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
 
         try {
             directoryIndex.query("phoenix", 1);
-            fail("Should have thrown a GeoEntryQueryException because a ParseException was thrown when creating the " +
-                    "Query.");
+            fail("Should have thrown a GeoEntryQueryException because a ParseException was " +
+                    "thrown when creating the Query.");
         } catch (GeoEntryQueryException e) {
             assertThat("The GeoEntryQueryException was not caused by a ParseException.",
                     e.getCause(), instanceOf(ParseException.class));

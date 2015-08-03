@@ -14,6 +14,12 @@
 
 package org.codice.ddf.spatial.geocoding.query;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -23,17 +29,15 @@ import org.apache.lucene.queries.function.FunctionQuery;
 import org.apache.lucene.queries.function.valuesource.FloatFieldSource;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.DisjunctionMaxQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.codice.ddf.spatial.geocoding.GeoEntry;
 import org.codice.ddf.spatial.geocoding.GeoEntryQueryException;
 import org.codice.ddf.spatial.geocoding.GeoEntryQueryable;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public abstract class GeoNamesQueryLuceneIndex implements GeoEntryQueryable {
     protected abstract Directory createDirectory() throws IOException;
@@ -62,6 +66,8 @@ public abstract class GeoNamesQueryLuceneIndex implements GeoEntryQueryable {
                 final List<GeoEntry> results = new ArrayList<>();
                 for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
                     final Document document = indexReader.document(scoreDoc.doc);
+                    // The alternate names aren't being stored (they are only used for queries),
+                    // so we don't retrieve them here.
                     results.add(new GeoEntry.Builder()
                             .name(document.get("name"))
                             .latitude(Double.parseDouble(document.get("latitude")))
@@ -71,7 +77,7 @@ public abstract class GeoNamesQueryLuceneIndex implements GeoEntryQueryable {
                             .build());
                 }
                 return results;
-            } else { // Perhaps try a fallback query here? A less-restrictive one?
+            } else {
                 return Collections.emptyList();
             }
         } catch (IOException e) {
