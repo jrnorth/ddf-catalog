@@ -190,7 +190,6 @@ public class GeoNamesLuceneIndexer implements GeoEntryIndexer {
 
     private float calculateBoost(final GeoEntry geoEntry) {
         final String featureCode = geoEntry.getFeatureCode();
-        final long population = geoEntry.getPopulation();
 
         float boost = 1.0f;
 
@@ -224,6 +223,7 @@ public class GeoNamesLuceneIndexer implements GeoEntryIndexer {
             }
         }
 
+        final long population = geoEntry.getPopulation();
         // Populated places get a small initial boost.
         boost += population > 0 ? 0.1f : 0;
         // A population of 25000000 or more will give the max population boost.
