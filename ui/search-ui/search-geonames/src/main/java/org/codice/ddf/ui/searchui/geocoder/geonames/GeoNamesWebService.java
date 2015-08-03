@@ -20,15 +20,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.codice.ddf.ui.searchui.geocoder.GeoCoder;
 import org.codice.ddf.ui.searchui.geocoder.GeoResult;
-import org.geotools.geometry.jts.spatialschema.geometry.DirectPositionImpl;
-import org.geotools.geometry.jts.spatialschema.geometry.primitive.PointImpl;
-import org.opengis.geometry.DirectPosition;
-import org.opengis.geometry.primitive.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
