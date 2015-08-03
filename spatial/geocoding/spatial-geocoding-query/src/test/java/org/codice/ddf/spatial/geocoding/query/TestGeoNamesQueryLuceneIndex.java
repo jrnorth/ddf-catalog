@@ -14,57 +14,44 @@
 
 package org.codice.ddf.spatial.geocoding.query;
 
+import static org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
 
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RAMDirectory;
 import org.codice.ddf.spatial.geocoding.GeoEntry;
 import org.codice.ddf.spatial.geocoding.GeoEntryQueryException;
 import org.codice.ddf.spatial.geocoding.TestBase;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({DirectoryReader.class, IndexReader.class})
 public class TestGeoNamesQueryLuceneIndex extends TestBase {
     private Directory directory;
-    private IndexReader indexReader;
-    private IndexSearcher indexSearcher;
-    private TopDocs topDocs;
     private GeoNamesQueryLuceneDirectoryIndex directoryIndex;
 
     private static final String NAME_1 = "Phoenix";
-    private static final String NAME_2 = "Tempe";
+    private static final String NAME_2 = "Phoenix Airport";
     private static final String NAME_3 = "Glendale";
 
     private static final double LAT_1 = 1.234;
@@ -114,63 +101,57 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
             .alternateNames(ALT_NAMES_3)
             .build();
 
+    private void initializeIndex() throws IOException {
+        directory = new RAMDirectory();
+
+        final IndexWriterConfig indexWriterConfig = new IndexWriterConfig(new StandardAnalyzer());
+        indexWriterConfig.setOpenMode(OpenMode.CREATE);
+
+        final IndexWriter indexWriter = new IndexWriter(directory, indexWriterConfig);
+
+        indexWriter.addDocument(createDocumentFromGeoEntry(GEO_ENTRY_1));
+        indexWriter.addDocument(createDocumentFromGeoEntry(GEO_ENTRY_2));
+        indexWriter.addDocument(createDocumentFromGeoEntry(GEO_ENTRY_3));
+
+        indexWriter.close();
+    }
+
     @Before
     public void setUp() throws IOException {
-        directory = mock(Directory.class);
-        // IndexReader's document() method is final, and we need to mock it.
-        indexReader = PowerMockito.mock(IndexReader.class);
-        indexSearcher = mock(IndexSearcher.class);
-        topDocs = mock(TopDocs.class);
         directoryIndex = spy(new GeoNamesQueryLuceneDirectoryIndex());
+        directoryIndex.setIndexLocation(null);
+
+        initializeIndex();
 
         doReturn(directory).when(directoryIndex).createDirectory();
-        doReturn(indexReader).when(directoryIndex).createIndexReader(directory);
-        doReturn(indexSearcher).when(directoryIndex).createIndexSearcher(indexReader);
-
-        mockStatic(DirectoryReader.class);
-        when(DirectoryReader.indexExists(directory)).thenReturn(true);
     }
 
     private Document createDocumentFromGeoEntry(final GeoEntry geoEntry) {
         final Document document = new Document();
 
-        document.add(new StringField("name", geoEntry.getName(), Field.Store.NO));
-        document.add(new DoubleField("latitude", geoEntry.getLatitude(), Field.Store.NO));
-        document.add(new DoubleField("longitude", geoEntry.getLongitude(), Field.Store.NO));
-        document.add(new StringField("feature_code", geoEntry.getFeatureCode(), Field.Store.NO));
-        document.add(new LongField("population", geoEntry.getPopulation(), Field.Store.NO));
-        document.add(new StringField("alternate_names", geoEntry.getAlternateNames(),
+        document.add(new TextField("name", geoEntry.getName(), Field.Store.YES));
+        document.add(new DoubleField("latitude", geoEntry.getLatitude(), Field.Store.YES));
+        document.add(new DoubleField("longitude", geoEntry.getLongitude(), Field.Store.YES));
+        document.add(new StringField("feature_code", geoEntry.getFeatureCode(), Field.Store.YES));
+        document.add(new LongField("population", geoEntry.getPopulation(), Field.Store.YES));
+        document.add(new TextField("alternate_names", geoEntry.getAlternateNames(),
                 Field.Store.NO));
 
         return document;
     }
 
-    private void setUpTopDocs(final int numResults) {
-        topDocs.totalHits = numResults;
-        topDocs.scoreDocs = new ScoreDoc[numResults];
-
-        for (int i = 0; i < numResults; ++i) {
-            topDocs.scoreDocs[i] = mock(ScoreDoc.class);
-            topDocs.scoreDocs[i].doc = i;
-        }
-    }
-
     @Test
-    public void testQueryWithExactlyMaxResults() throws IOException {
+    public void testQueryWithExactlyMaxResults() throws IOException, ParseException {
         final int requestedMaxResults = 2;
+        final String queryString = "phoenix";
 
-        setUpTopDocs(requestedMaxResults);
-
-        doReturn(topDocs).when(indexSearcher).search(any(Query.class), eq(requestedMaxResults));
-
-        doReturn(createDocumentFromGeoEntry(GEO_ENTRY_1)).when(indexReader).document(0);
-        doReturn(createDocumentFromGeoEntry(GEO_ENTRY_2)).when(indexReader).document(1);
-
-        final List<GeoEntry> results = directoryIndex.query("phoenix", requestedMaxResults);
+        final List<GeoEntry> results = directoryIndex.query(queryString, requestedMaxResults);
         assertThat(results.size(), is(requestedMaxResults));
 
         final GeoEntry firstResult = results.get(0);
         // We don't store the alternate names, so we don't get them back with the query results.
+        // The entry with the name "phoenix" will come first because the name matches the query
+        // exactly.
         verifyGeoEntry(firstResult, NAME_1, LAT_1, LON_1, FEATURE_CODE_1, POP_1, null);
 
         final GeoEntry secondResult = results.get(1);
@@ -179,17 +160,12 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
     }
 
     @Test
-    public void testQueryWithLessThanMaxResults() throws IOException {
+    public void testQueryWithLessThanMaxResults() throws IOException, ParseException {
         final int requestedMaxResults = 2;
         final int actualResults = 1;
+        final String queryString = "glendale";
 
-        setUpTopDocs(actualResults);
-
-        doReturn(topDocs).when(indexSearcher).search(any(Query.class), eq(requestedMaxResults));
-
-        doReturn(createDocumentFromGeoEntry(GEO_ENTRY_3)).when(indexReader).document(0);
-
-        final List<GeoEntry> results = directoryIndex.query("phoenix", requestedMaxResults);
+        final List<GeoEntry> results = directoryIndex.query(queryString, requestedMaxResults);
         assertThat(results.size(), is(actualResults));
 
         final GeoEntry firstResult = results.get(0);
@@ -198,15 +174,12 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
     }
 
     @Test
-    public void testQueryWithNoResults() throws IOException {
+    public void testQueryWithNoResults() throws IOException, ParseException {
         final int requestedMaxResults = 2;
         final int actualResults = 0;
+        final String queryString = "another place";
 
-        topDocs.totalHits = actualResults;
-
-        doReturn(topDocs).when(indexSearcher).search(any(Query.class), eq(requestedMaxResults));
-
-        final List<GeoEntry> results = directoryIndex.query("phoenix", requestedMaxResults);
+        final List<GeoEntry> results = directoryIndex.query(queryString, requestedMaxResults);
         assertThat(results.size(), is(actualResults));
     }
 
@@ -232,7 +205,7 @@ public class TestGeoNamesQueryLuceneIndex extends TestBase {
 
     @Test(expected = GeoEntryQueryException.class)
     public void testNoExistingIndex() throws IOException {
-        when(DirectoryReader.indexExists(directory)).thenReturn(false);
+        doReturn(false).when(directoryIndex).indexExists(directory);
         directoryIndex.query("phoenix", 1);
     }
 

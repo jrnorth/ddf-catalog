@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queries.CustomScoreQuery;
 import org.apache.lucene.queries.function.FunctionQuery;
@@ -46,6 +47,10 @@ public abstract class GeoNamesQueryLuceneIndex implements GeoEntryQueryable {
 
     protected abstract IndexSearcher createIndexSearcher(IndexReader indexReader);
 
+    protected boolean indexExists(final Directory directory) throws IOException {
+        return DirectoryReader.indexExists(directory);
+    }
+
     protected List<GeoEntry> doQuery(final String queryString, final int maxResults,
             final Directory directory) {
         if (StringUtils.isBlank(queryString)) {
@@ -65,7 +70,7 @@ public abstract class GeoNamesQueryLuceneIndex implements GeoEntryQueryable {
             if (topDocs.totalHits > 0) {
                 final List<GeoEntry> results = new ArrayList<>();
                 for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-                    final Document document = indexReader.document(scoreDoc.doc);
+                    final Document document = indexSearcher.doc(scoreDoc.doc);
                     // The alternate names aren't being stored (they are only used for queries),
                     // so we don't retrieve them here.
                     results.add(new GeoEntry.Builder()

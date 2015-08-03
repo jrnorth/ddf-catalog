@@ -67,7 +67,7 @@
                 <configuration>
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
-                        <Export-Package/>
+                        <Export-Package>org.codice.ddf.spatial.geocoding.index</Export-Package>
                         <Embed-Dependency>
                             lucene-analyzers-common
                         </Embed-Dependency>

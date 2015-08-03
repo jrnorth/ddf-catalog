@@ -35,14 +35,17 @@ public class GeoNamesQueryLuceneDirectoryIndex extends GeoNamesQueryLuceneIndex 
         this.indexLocation = indexLocation;
     }
 
+    @Override
     protected Directory createDirectory() throws IOException {
         return FSDirectory.open(Paths.get(indexLocation));
     }
 
+    @Override
     protected IndexReader createIndexReader(final Directory directory) throws IOException {
         return DirectoryReader.open(directory);
     }
 
+    @Override
     protected IndexSearcher createIndexSearcher(final IndexReader indexReader) {
         final IndexSearcher indexSearcher = new IndexSearcher(indexReader);
         indexSearcher.setSimilarity(GeoNamesLuceneIndexer.SIMILARITY);
@@ -55,8 +58,8 @@ public class GeoNamesQueryLuceneDirectoryIndex extends GeoNamesQueryLuceneIndex 
 
         try {
             directory = createDirectory();
-            if (!DirectoryReader.indexExists(directory)) {
-                throw new GeoEntryQueryException("There is no index at that location.");
+            if (!indexExists(directory)) {
+                throw new GeoEntryQueryException("There is no index at " + indexLocation);
             }
         } catch (IOException e) {
             throw new GeoEntryQueryException("Error opening the index directory.", e);
