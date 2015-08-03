@@ -20,15 +20,9 @@
                 <property name="geoEntryExtractor" ref="geoEntryExtractor"/>
             </action>
         </command>
-        <command name="geonames/query">
-            <action class="org.codice.ddf.commands.spatial.geonames.GeoNamesQueryCommand">
-                <property name="geoEntryQueryable" ref="geoEntryQueryable"/>
-            </action>
-        </command>
     </command-bundle>
 
     <reference id="geoEntryIndexer" interface="org.codice.ddf.spatial.geocoding.GeoEntryIndexer"/>
     <reference id="geoEntryExtractor" interface="org.codice.ddf.spatial.geocoding.GeoEntryExtractor"/>
 
-    <reference id="geoEntryQueryable" interface="org.codice.ddf.spatial.geocoding.GeoEntryQueryable"/>
 </blueprint>
