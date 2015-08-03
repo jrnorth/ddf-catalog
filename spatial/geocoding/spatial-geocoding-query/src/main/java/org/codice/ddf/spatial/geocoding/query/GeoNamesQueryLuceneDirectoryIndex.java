@@ -25,7 +25,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.codice.ddf.spatial.geocoding.GeoEntry;
 import org.codice.ddf.spatial.geocoding.GeoEntryQueryException;
-import org.codice.ddf.spatial.geocoding.GeoEntryQueryable;
 import org.codice.ddf.spatial.geocoding.index.GeoNamesLuceneIndexer;
 
 public class GeoNamesQueryLuceneDirectoryIndex extends GeoNamesQueryLuceneIndex {
