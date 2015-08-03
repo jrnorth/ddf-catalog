@@ -90,6 +90,7 @@
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Export-Package/>
                         <Import-Package>
+                            org.apache.lucene.search,
                             *
                         </Import-Package>
                         <Embed-Dependency>
