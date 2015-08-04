@@ -97,7 +97,7 @@ public abstract class GeoNamesQueryLuceneIndex implements GeoEntryQueryable {
         nameQueryParser.setEnablePositionIncrements(false);
 
         // Surround with quotes so Lucene looks for the words in the query as a phrase.
-        final Query nameQuery = nameQueryParser.parse("\"" + queryString + "\""); // Perhaps experiment with "and"?
+        final Query nameQuery = nameQueryParser.parse("\"" + queryString + "\"");
         nameQuery.setBoost(3.2f);
 
         final QueryParser alternateNamesQueryParser = new QueryParser("alternate_names",
