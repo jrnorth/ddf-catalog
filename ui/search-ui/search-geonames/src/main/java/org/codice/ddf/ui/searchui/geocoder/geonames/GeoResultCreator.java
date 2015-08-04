@@ -78,6 +78,8 @@ final class GeoResultCreator {
                 latitudeOffset *= 0.2;
                 longitudeOffset *= 0.2;
             }
+        } else {
+            latitudeOffset = longitudeOffset = 0.1;
         }
 
         final DirectPosition northWest = new DirectPositionImpl(longitude - longitudeOffset,
